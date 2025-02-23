@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>이차방정식 빈출 (3)</title>
+<style>
+  /* 흑백 테마 */
+  body {
+    background-color: black;
+    color: white;
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+  }
+  .container {
+    padding: 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .hidden {
+    display: none;
+  }
+  .question-box, .result-box, .start-box {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid white;
+    padding: 1rem;
+  }
+  .choices {
+    margin-top: 1rem;
+  }
+  .choice-button {
+    display: block;
+    margin: 0.5rem 0;
+    background: none;
+    color: white;
+    border: 1px solid white;
+    padding: 0.5rem;
+    cursor: pointer;
+    text-align: left;
+  }
+  .choice-button:hover {
+    background: #333;
+  }
+  #energyBarContainer {
+    width: 100%;
+    height: 10px;
+    background-color: #777;
+    margin-top: 1rem;
+    overflow: hidden;
+    position: relative;
+  }
+  #energyBar {
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    transition: width 0.2s linear;
+  }
+  .info {
+    margin-top: 0.5rem;
+  }
+  .score-box {
+    margin-top: 1rem;
+  }
+  .button-next {
+    display: inline-block;
+    margin-top: 1rem;
+    background: none;
+    color: white;
+    border: 1px solid white;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+  .button-next:hover {
+    background: #333;
+  }
+  .final-box {
+    margin-top: 2rem;
+    border: 1px solid white;
+    padding: 1rem;
+  }
+  .response-area {
+    margin-top: 1rem;
+    white-space: pre-wrap; 
+  }
+</style>
+
+<!-- MathJax 로드 -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+
+</head>
+<body>
+<div class="container">
+
+  <h1>이차방정식 빈출 (3)</h1>
+
+  <!-- 전체 게임 시간을 표시 -->
+  <div>전체 경과 시간: <span id="totalTime">0</span>초</div>
+
+  <!-- 시작 화면 -->
+  <div id="startScreen" class="start-box">
+    <h2>난이도를 선택하세요</h2>
+    <label>이름: <input type="text" id="playerName" placeholder="이름을 입력하세요"></label>
+    <div style="margin-top: 1rem;">
+      <button class="choice-button" onclick="startGame('최상')">최상 (20초/문제, +20점)</button>
+      <button class="choice-button" onclick="startGame('상')">상 (30초/문제, +15점)</button>
+      <button class="choice-button" onclick="startGame('중')">중 (40초/문제, +13점)</button>
+      <button class="choice-button" onclick="startGame('하')">하 (무제한, +10점)</button>
+    </div>
+  </div>
+
+  <!-- 문제 화면 -->
+  <div id="quizScreen" class="question-box hidden">
+    <div id="questionText"></div>
+    <div class="choices" id="choicesArea"></div>
+    <div id="energyBarContainer" class="hidden">
+      <div id="energyBar"></div>
+    </div>
+    <div class="info">
+      <div>남은 기회: <span id="lives">3</span></div>
+      <div>현재 점수: <span id="score">0</span></div>
+    </div>
+    <div>
+      <button id="nextButton" class="button-next hidden" onclick="onNextQuestion()">다음 문제</button>
+    </div>
+  </div>
+
+  <!-- 게임 종료 후 결과 화면 -->
+  <div id="endScreen" class="result-box hidden">
+    <h2>게임 종료</h2>
+    <div>최종 점수: <span id="finalScore"></span></div>
+    <div>총 소요 시간: <span id="finalTime"></span>초</div>
+    <button class="button-next" onclick="onSubmitScore()">점수전송</button>
+    <div id="response" class="response-area"></div>
+  </div>
+
+</div>
+
+<script>
+// =======================================================================
+// "답이 보기에 존재하여 정답이 확정된" 문제들만 모아 놓았습니다.
+// 문제 텍스트/보기/정답인덱스는 '대화'에서 정리된 것 그대로입니다.
+// =======================================================================
+const problems = [
+
+  {
+    question: `1. \\(x\\)에 대한 이차방정식 \\(x^2 - px + 2p -5 = 0\\)의 두 실근 \\(\\alpha,\\beta\\)가 
+\\(0 < \\alpha < 1 < \\beta < 3\\)를 만족하도록 하는 정수 \\(p\\)의 값은? (2점)
+<br>
+1) -5<br>2) -3<br>3) -1<br>4) 1<br>5) 3`,
+    choices: ["-5","-3","-1","1","3"],
+    correctIndex: 4
+  },
+
+  {
+    question: `2. \\(x\\)에 대한 이차함수 \\(y = x^2 + 2(a+1)x + a^2\\)의 그래프가 
+x축과 서로 다른 두 점에서 만날 때, 실수 \\(a\\)의 범위? (2점)
+<br>
+1) a > -1<br>2) a > -\\tfrac12<br>3) a < \\tfrac12<br>4) ?<br>5) ?`,
+    choices: ["a > -1","a > -\\tfrac12","a < \\tfrac12","(기타)","(기타)"],
+    correctIndex: 1
+  },
+
+  {
+    question: `5. 모든 실수 \\(x\\)에 대하여 이차부등식 
+\\(x^2 + (m+2)x + 2m +1 > 0\\)
+이 성립하도록 하는 모든 정수 \\(m\\)의 값의 합? (3점)
+<br>
+1) 3<br>2) 4<br>3) 5<br>4) 6<br>5) 7`,
+    choices: ["3","4","5","6","7"],
+    correctIndex: 3
+  },
+
+  {
+    question: `7. 이차함수 \\(y = x^2 +6x -3\\)의 그래프와 직선 \\(y = kx -7\\)이
+만나지 않도록 하는 자연수 \\(k\\)의 개수? (3점)
+<br>
+1) 3<br>2) 4<br>3) 5<br>4) 6<br>5) 7`,
+    choices: ["3","4","5","6","7"],
+    correctIndex: 4
+  },
+
+  {
+    question: `8. 이차함수 \\(y = x^2 +4x + a\\)의 그래프가 x축과 접할 때, 
+상수 \\(a\\)의 값은? (2점)
+<br>
+1) 4<br>2) 5<br>3) 6<br>4) 7<br>5) 8`,
+    choices: ["4","5","6","7","8"],
+    correctIndex: 0
+  },
+
+  {
+    question: `9. 이차함수 \\(y = x^2 + 4(a-k)x + 4k^2 -3k + b\\)의 그래프가
+실수 \\(k\\) 값에 관계없이 항상 x축과 한 점에서만 만날 때(\\(\\Delta=0\\)), 
+두 상수 \\(a,b\\)에 대하여 \\(a+b\\)의 값은? (3점)
+<br>
+1) \\(\\tfrac34\\)<br>2) \\(\\tfrac{13}{16}\\)<br>3) \\(\\tfrac{15}{16}\\)<br>4) 1`,
+    choices: ["\\(\\tfrac34\\)","\\(\\tfrac{13}{16}\\)","\\(\\tfrac{15}{16}\\)","1"],
+    correctIndex: 2
+  },
+
+  {
+    question: `14. 이차함수 \\(f(x) = x^2 - 2kx + 3 - k\\)에 대하여 
+\\(0 \\le x \\le 2\\)일 때, 항상 \\(f(x) \\le 0\\)을 만족시키는 
+상수 \\(k\\)의 최소값? (1점)
+<br>
+1) 1<br>2) 2<br>3) 3<br>4) 4<br>5) 5`,
+    choices: ["1","2","3","4","5"],
+    correctIndex: 2
+  },
+
+  {
+    question: `21. 이차방정식 \\(x^2 + ax -3=0\\)의 두 근 \\(\\alpha,\\beta\\)가 
+\\(\\alpha < -2,\\; 1 < \\beta < 2\\)를 만족시키도록 하는 
+정수 \\(a\\)의 개수? (1점)
+<br>
+1) 1<br>2) 2<br>3) 3<br>4) 4<br>5) 5`,
+    choices: ["1","2","3","4","5"],
+    correctIndex: 0
+  },
+
+  {
+    question: `22. \\(x\\)에 대한 이차함수 \\(y = x^2 -2(k+a)x + k^2 -5k + a^2\\)의 그래프가 
+\\(k\\)값에 상관없이 x축에 접하도록(\\(\\Delta=0\\)) 할 때, 상수 \\(a\\)의 값은? (1점)
+<br>
+1) \\(\\tfrac12\\)<br>2) 1<br>3) \\(-\\tfrac32\\)<br>4) \\(-\\tfrac52\\)<br>5) (기타)`,
+    choices: ["\\(\\tfrac12\\)","1","\\(-\\tfrac32\\)","\\(-\\tfrac52\\)","(기타)"],
+    correctIndex: 3
+  },
+
+  {
+    question: `25. 이차함수 \\(y = x^2 + 2(a-1)x + 2a +13\\)의 그래프가 
+x축과 만나지 않도록(실근이 없도록) 하는 모든 정수 \\(a\\)의 합? (3점)
+<br>
+1) 12<br>2) 14<br>3) 16<br>4) 18<br>5) 20`,
+    choices: ["12","14","16","18","20"],
+    correctIndex: 1
+  },
+
+  {
+    question: `29. 두 상수 \\(a,b\\)에 대하여 이차함수 \\(y = x^2 + ax + b\\)의 그래프가 
+점 \\((1,0)\\)에서 x축과 접할 때, 
+이차함수 \\(y = x^2 + bx + a\\)의 그래프가 x축과 만나는 두 점 사이 거리? (3점)
+<br>
+1) 1<br>2) 2<br>3) 3<br>4) 4<br>5) 5`,
+    choices: ["1","2","3","4","5"],
+    correctIndex: 2
+  },
+
+  {
+    question: `31. 이차방정식 \\(2x^2 -8x + a=0\\)의 한 근은 2보다 작고, 
+다른 한 근은 2보다 크도록 하는 자연수 \\(a\\)의 개수? (2점)
+<br>
+1) 6<br>2) 7<br>3) 8<br>4) 9<br>5) 10`,
+    choices: ["6","7","8","9","10"],
+    correctIndex: 1
+  },
+
+  {
+    question: `33. 이차함수 \\(y = x^2 -4ax -4b^2 +100\\)의 그래프가 
+x축과 접하도록 할 때(\\(\\Delta=0\\)), 
+자연수 \\(a,b\\)에 대하여 \\(a+b\\)는? (3점)
+<br>
+1) 3<br>2) 4<br>3) 5<br>4) 6<br>5) 7`,
+    choices: ["3","4","5","6","7"],
+    correctIndex: 4
+  },
+
+  {
+    question: `34. 함수 \\(y= x^2 + ax + b\\)의 그래프와 직선 \\(y= x + c\\)가 
+점 \\(A(1+2\\sqrt2, 3+2\\sqrt2)\\)에서 만나며, \\(a,b\\)는 유리수일 때, 
+\\(abc\\)의 값은? (?)
+<br>
+1) 10<br>2) 12<br>3) 14<br>4) 16<br>5) 18`,
+    choices: ["10","12","14","16","18"],
+    correctIndex: 0
+  },
+
+  {
+    question: `39. 이차방정식 \\(k x^2 + (2k-3)x +2=0\\)의 서로 다른 두 실근 \\(\\alpha,\\beta\\)에 대하여 
+\\(|\\alpha|<2, |\\beta|>2\\)가 성립할 때, 양수 \\(k\\)의 값 범위? (2점)
+<br>
+1) \\(k > \\tfrac12\\)<br>2) \\(k > 1\\)<br>3) \\(0 < k < \\tfrac12\\)<br>4) (기타)`,
+    choices: ["\\(k > \\tfrac12\\)","\\(k > 1\\)","0 < k < \\tfrac12","(기타)"],
+    correctIndex: 2
+  },
+
+  {
+    question: `45. 이차함수 \\(y = x^2 -2ax + 2b\\)의 그래프가 
+x축에 만나지 않도록(실근 없음) 하는 
+한 자리 자연수 \\(a,b\\)의 순서쌍 \\((a,b)\\) 개수? (3점)
+<br>
+1) 21<br>2) 22<br>3) 23<br>4) 24<br>5) 25`,
+    choices: ["21","22","23","24","25"],
+    correctIndex: 1
+  },
+
+  {
+    question: `51. 유리수 \\(a,b,c\\)에 대하여 이차함수 \\(y= x^2 + ax\\)의 그래프와 
+직선 \\(y= bx + c\\)가 만나는 두 점을 \\(P,Q\\)라 하자. 
+점 \\(P\\)의 x좌표가 \\(2 + \\sqrt3\\)일 때, \\(a - b + c\\)의 값은? (1점)
+<br>
+1) -1<br>2) -5<br>3) 1<br>4) -3<br>5) 3`,
+    // 실제 보기는 대화 상에서 "1) -1, 2) -5, 3) 1, 4) -3, 5) 3"이었는데
+    // 정답은 "-5"였음(즉 index=1).
+    choices: ["-1","-5","1","-3","3"],
+    correctIndex: 1
+  },
+
+  {
+    question: `52. 이차함수 \\(y= x^2 -2x + a\\)의 그래프를 y축의 방향으로 -2만큼 평행이동한 그래프가 
+x축과 접할 때, 상수 \\(a\\)의 값은? (2점)
+<br>
+1) 1<br>2) 2<br>3) 3<br>4) 4<br>5) 5`,
+    choices: ["1","2","3","4","5"],
+    correctIndex: 2
+  },
+
+  {
+    question: `54. 이차함수 \\(y= x^2 -2kx + k^2 +2k\\)는 x축과 서로 다른 두 점에서 만나고, 
+\\(y= x^2 +2kx + k^2 +5k +35\\)는 만나지 않도록 하는 정수 \\(k\\)의 개수? (1점)
+<br>
+1) 2<br>2) 4<br>3) 6<br>4) 8<br>5) 10`,
+    choices: ["2","4","6","8","10"],
+    correctIndex: 2
+  },
+
+  {
+    question: `56. \\(x\\)에 대한 이차부등식 \\(x^2 + ax + 6 \\le 0\\)의 해가 
+\\(2 \\le x \\le 3\\)일 때, 상수 \\(a\\)의 값은? (3점)
+<br>
+1) -5<br>2) -4<br>3) -3<br>4) -2<br>5) -1`,
+    choices: ["-5","-4","-3","-2","-1"],
+    correctIndex: 0
+  },
+
+  {
+    question: `60. 이차함수 \\(f(x)= x^2 -2ax + 9a\\)에 대하여 
+\\(f(x) < 0\\)을 만족시키는 해가 존재하지 않도록 하는 정수 \\(a\\)의 개수? (3점)
+<br>
+1) 9<br>2) 10<br>3) 11<br>4) 12<br>5) 13`,
+    choices: ["9","10","11","12","13"],
+    correctIndex: 1
+  },
+
+  {
+    question: `69. 이차방정식 \\(a x^2 + a x + 2a -18=0\\)의 한 근이, 
+\\(x^2 -3x +2=0\\)의 두 근(1,2) 사이에 존재하도록 하는 
+모든 자연수 \\(a\\)의 합은? (2점)
+<br>
+1) 3<br>2) 5<br>3) 7<br>4) 9<br>5) 11`,
+    choices: ["3","5","7","9","11"],
+    correctIndex: 2
+  },
+
+  {
+    question: `70. 두 유리수 \\(a,b\\)에 대하여 이차함수 \\(y= 2x^2 + ax +3\\)의 그래프와 
+직선 \\(y= x + b\\)가 서로 다른 두 점에서 만나고, 
+점 A의 x좌표가 \\(1 - \\sqrt3\\)일 때, \\(a^2 + b^2\\)는? (?)
+<br>
+1) 50<br>2) 52<br>3) 54<br>4) 56<br>5) 58`,
+    choices: ["50","52","54","56","58"],
+    correctIndex: 4
+  }
+
+];
+
+// 전역 상태 변수
+let currentProblems = [];
+let currentIndex = 0;
+let score = 0;
+let lives = 3;
+let gameStarted = false;
+let overallTime = 0;
+let overallTimer = null;
+let questionTimer = null;
+let questionTimeLimit = 0;
+let questionTimeRemaining = 0;
+let difficultyScore = 0;
+let isUnlimited = false;
+let playerName = "";
+
+// ============= 유틸 함수 =============
+
+// 문제/보기 섞기
+function shuffleArray(array) {
+  for(let i=array.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+// 시작 함수
+function startGame(difficulty) {
+  const nameInput = document.getElementById("playerName");
+  playerName = nameInput.value.trim();
+  if(!playerName) {
+    alert("이름을 입력하세요.");
+    return;
+  }
+
+  if(difficulty === "최상") {
+    questionTimeLimit = 20; 
+    difficultyScore = 20;
+  } else if(difficulty === "상") {
+    questionTimeLimit = 30; 
+    difficultyScore = 15;
+  } else if(difficulty === "중") {
+    questionTimeLimit = 40; 
+    difficultyScore = 13;
+  } else {
+    // 하
+    questionTimeLimit = 999999; // 사실상 무제한
+    difficultyScore = 10;
+    isUnlimited = true;
+  }
+
+  gameStarted = true;
+  score = 0;
+  lives = 3;
+  overallTime = 0;
+  currentIndex = 0;
+
+  document.getElementById("lives").textContent = lives;
+  document.getElementById("score").textContent = score;
+
+  // 문제를 1바퀴 돌 순서로 복사 & 섞기
+  currentProblems = [...problems];
+  shuffleArray(currentProblems);
+
+  document.getElementById("startScreen").classList.add("hidden");
+  document.getElementById("quizScreen").classList.remove("hidden");
+
+  overallTimer = setInterval(()=>{
+    overallTime++;
+    document.getElementById("totalTime").textContent = overallTime;
+  },1000);
+
+  loadProblem();
+}
+
+// 문제 불러오기
+function loadProblem() {
+  if(!isUnlimited){
+    document.getElementById("energyBarContainer").classList.remove("hidden");
+  } else {
+    document.getElementById("energyBarContainer").classList.add("hidden");
+  }
+
+  let probObj = null;
+  if(currentIndex >= currentProblems.length){
+    // 한 바퀴 다 돌았다면 -> 이후엔 전체 problems 중 랜덤
+    const randIdx = Math.floor(Math.random() * problems.length);
+    probObj = problems[randIdx];
+  } else {
+    probObj = currentProblems[currentIndex];
+    currentIndex++;
+  }
+
+  showProblem(probObj);
+}
+
+// 문제 표시
+function showProblem(probObj) {
+  // 문제 텍스트
+  document.getElementById("questionText").innerHTML = "Q) " + probObj.question;
+
+  // 보기 섞기용 인덱스 [0..4]
+  const indices = [0,1,2,3,4];
+  shuffleArray(indices);
+
+  const choicesArea = document.getElementById("choicesArea");
+  choicesArea.innerHTML = "";
+  document.getElementById("nextButton").classList.add("hidden");
+
+  indices.forEach((originalIndex, pos)=>{
+    const btn = document.createElement("button");
+    btn.className = "choice-button";
+    btn.innerHTML = probObj.choices[originalIndex];
+    // pos: 화면에서 몇 번째 버튼인지
+    // originalIndex: 실제 문제 choices[] 인덱스
+    btn.onclick = ()=> onAnswer(probObj, pos, indices, probObj.correctIndex);
+    choicesArea.appendChild(btn);
+  });
+
+  // 수식 렌더링
+  MathJax.typeset();
+
+  startQuestionTimer();
+}
+
+// 문제당 타이머
+function startQuestionTimer() {
+  stopQuestionTimer();
+  questionTimeRemaining = questionTimeLimit;
+
+  if(!isUnlimited){
+    questionTimer = setInterval(()=>{
+      questionTimeRemaining--;
+      const pct = (questionTimeRemaining / questionTimeLimit)*100;
+      document.getElementById("energyBar").style.width = pct + "%";
+
+      if(questionTimeRemaining <= 0){
+        stopQuestionTimer();
+        lives--;
+        document.getElementById("lives").textContent = lives;
+        alert("시간 초과! 오답 처리됩니다.");
+        if(lives <= 0){
+          endGame();
+          return;
+        }
+        document.getElementById("nextButton").classList.remove("hidden");
+      }
+    },1000);
+  }
+}
+
+function stopQuestionTimer() {
+  if(questionTimer){
+    clearInterval(questionTimer);
+    questionTimer = null;
+  }
+}
+
+// 정답 체크
+function onAnswer(probObj, chosenPos, shuffledIndices, correctIndex) {
+  stopQuestionTimer();
+
+  // "섞인 배열"에서 correctIndex가 어느 pos인지 찾기
+  let correctPos = -1;
+  for(let i=0; i<shuffledIndices.length; i++){
+    if(shuffledIndices[i] === correctIndex){
+      correctPos = i;
+      break;
+    }
+  }
+
+  if(chosenPos === correctPos){
+    // 정답
+    score += difficultyScore;
+    document.getElementById("score").textContent = score;
+    alert("정답입니다!");
+  } else {
+    // 오답
+    lives--;
+    document.getElementById("lives").textContent = lives;
+    const correctChoiceText = probObj.choices[shuffledIndices[correctPos]];
+    alert("오답! 정답은 => " + correctChoiceText);
+    if(lives <= 0){
+      endGame();
+      return;
+    }
+  }
+
+  // '다음 문제' 버튼
+  document.getElementById("nextButton").classList.remove("hidden");
+
+  // 선택 후 보기버튼 비활성화
+  const buttons = document.querySelectorAll(".choice-button");
+  buttons.forEach(btn => btn.disabled = true);
+}
+
+// 다음 문제
+function onNextQuestion() {
+  loadProblem();
+}
+
+// 게임 종료
+function endGame() {
+  stopQuestionTimer();
+  if(overallTimer){
+    clearInterval(overallTimer);
+    overallTimer = null;
+  }
+
+  document.getElementById("finalScore").textContent = score;
+  document.getElementById("finalTime").textContent = overallTime;
+
+  document.getElementById("quizScreen").classList.add("hidden");
+  document.getElementById("endScreen").classList.remove("hidden");
+}
+
+// 점수 전송
+function onSubmitScore(){
+  saveData("이차방정식 빈출 (3)", playerName, score, overallTime);
+}
+
+/* 데이터 전송 함수 */
+function saveData(game, name, score, elapsedTime) {
+    const FUNCTION_URL = "https://us-central1-record-f420d.cloudfunctions.net/report";
+
+    const requestData = {
+        game,
+        name,
+        score: parseInt(score, 10),
+        elapsedTime: parseInt(elapsedTime, 10)
+    };
+
+    fetch(FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(async (response) => {
+        const responseData = await response.json();
+        if (response.ok) {
+            document.getElementById('response').innerText =
+                "성공: " + JSON.stringify(responseData, null, 2);
+        } else {
+            document.getElementById('response').innerText =
+                "오류: " + JSON.stringify(responseData, null, 2);
+        }
+    })
+    .catch((error) => {
+        console.error('요청 실패:', error);
+        document.getElementById('response').innerText =
+            "네트워크 오류: " + error.message;
+    });
+}
+</script>
+</body>
+</html>
